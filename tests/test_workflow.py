@@ -7,6 +7,7 @@ from backend import db
 
 @pytest.fixture
 def client(tmp_path,monkeypatch):
+    monkeypatch.setenv('COOKIE_SECURE','false')
     monkeypatch.setenv('DATABASE_PATH',str(tmp_path/'test.db'))
     monkeypatch.setenv('DEMO_MODE','true')
     monkeypatch.setenv('AUTH_REQUIRED','false')
@@ -136,7 +137,7 @@ def test_gemini_adapter_uses_validated_output(client,monkeypatch):
     monkeypatch.setenv('GEMINI_API_KEY','test-only')
     def fake_model(prompt,schema):
         if schema is Interpretation:
-            return Interpretation(category='Lighting',location='Hostel 3',title='Light near rear gate is out')
+            return Interpretation(intent='complaint',category='Lighting',location='Hostel 3',title='Light near rear gate is out')
         return Match(ticket_id=99999,explanation='Invalid candidate must not be accepted')
     monkeypatch.setattr('backend.agent.model_json',fake_model)
     conversation=str(uuid.uuid4())

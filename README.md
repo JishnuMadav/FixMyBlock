@@ -53,13 +53,35 @@ Only exact `@nitk.edu.in` addresses are accepted on the server. WorkOS sends and
 
 Verified users receive an opaque HttpOnly, SameSite cookie with an eight-hour absolute lifetime. Only its hash is stored; sign-out revokes the local session. Sign in again when it expires. Reports use the stable WorkOS user ID, so they persist across logins and devices. Older anonymous demo reports stay in the database without being assigned to an unverified account. This verifies email ownership, not enrollment status.
 
-The maintenance queue requires a verified email explicitly listed in `WORKOS_OPERATOR_EMAILS` (comma-separated). Students cannot enable operator access using the old demo cookie. Set `COOKIE_SECURE=true` behind HTTPS before deployment. The current server still accepts only localhost hosts/origins. These local sessions expire independently of WorkOS dashboard session revocation; centralized revocation/webhooks are not implemented.
+Maintenance teams sign in with admin-created user IDs and passwords, separately from student email codes. Legacy emails explicitly listed in `WORKOS_OPERATOR_EMAILS` retain administrator privileges; leave that list empty unless needed. Students cannot enable operator access using the old demo cookie. Set `COOKIE_SECURE=true` behind HTTPS before deployment. The current server still accepts only localhost hosts/origins. These local sessions expire independently of WorkOS dashboard session revocation; centralized revocation/webhooks are not implemented.
 
 For isolated offline demonstrations only, `AUTH_REQUIRED=false` restores the old anonymous session mode. Keep that mode on localhost.
 
+## Admin and maintenance dashboards
+
+Create the initial administrator locally (there is no public admin registration endpoint):
+
+```powershell
+.venv/Scripts/python -m backend.create_admin
+```
+
+This creates `fmb-admin` only if no administrator exists and saves its random temporary password to `data/admin-credentials.txt`, which is ignored by Git. Open **Maintenance / Admin** on the sign-in page. Change the temporary password at first sign-in, then remove the local credential file. Running the command again does not reset an existing administrator.
+
+The admin dashboard shows workload by team and lets an administrator create team user IDs, generate one-time-displayed temporary passwords, reset passwords, and enable/disable accounts. Account actions are audited. Teams must change temporary passwords before accessing reports; passwords are stored as salted scrypt hashes. Reset/disable revokes existing sessions. Each team dashboard and ticket mutation is restricted on the server to that team's assigned work. Admins can view all work queues. The four teams are Electrical, Sanitation, Grounds, and Plumbing.
+
+## Complaint validation and photos
+
+The assistant checks whether the message describes an existing maintenance problem before asking for a location or offering submission. Unrelated messages and gibberish receive a redirect without a ticket action. A location or category word alone should not turn an unrelated task into a complaint. Gemini uses an explicit intent field; offline demo rules are narrower. Model classification still needs evaluation against real-world phrasing and is not a guarantee of perfect filtering.
+
+Photos are optional. JPEG, PNG, and WebP uploads are limited to 5 MB and 20 megapixels, decoded and re-encoded as JPEG, resized to 1600 pixels, and stripped of metadata. The UI explains that photos are sent to Gemini and shows its observation and uncertainty for review. No Gemini key means an attachment with an explicit unavailable-analysis label. Analysis failures let the resident retry or proceed without a photo. Photo observations cannot directly submit tickets or establish exact locations.
+
+Photos are stored privately in the ignored SQLite database. Only the uploader and an authorized administrator/assigned team can fetch them. Unattached images older than 24 hours are cleaned up when the next upload succeeds. Submitted photos follow the local database retention policy; automated removal of submitted evidence is not implemented. Do not upload faces or private information.
+
 ## What works
 
-- Report intake with category/location clarification.
+- Report intake with an intent check before category/location clarification.
+- Optional photo evidence with Gemini analysis and resident review.
+- Admin-managed maintenance accounts and dashboards restricted by team.
 - Interactive NITK campus map, 12 searchable landmarks, draggable report pins, and optional location details.
 - Saved coordinates and nearby duplicate candidates within 120 metres; Gemini compares the complaint with those candidates before suggesting a link.
 - Google Maps links for selected locations (no Google Maps API key required).
@@ -78,7 +100,7 @@ For isolated offline demonstrations only, `AUTH_REQUIRED=false` restores the old
 
 1. Choose a location on the map, such as E-Library, and add a detail such as “Near the entrance — fictional demo.” Describe a broken streetlight, review, and submit.
 2. Start a new report for the same broken streetlight at the same pin. Review the possible duplicate and confirm the link. Only one repair ticket is needed.
-3. Open Work queue (explicit local operator demo), open that ticket, add a note, and start work.
+3. Sign in as an administrator or the assigned maintenance team, open the ticket in its work queue, add a note, and start work.
 4. Add “The crew could not find the location” and select Suggest next step. Review and approve the location follow-up. It is recorded in the local queue; no message is sent externally.
 5. Add a completion note and request repair verification. Open My reports and confirm the fix or reopen it.
 6. Advance demo time by 24 hours to flag overdue work. The offset is for deadline demonstrations only; activity timestamps remain real time.
@@ -121,6 +143,10 @@ Tests use temporary databases; they do not modify your demo data. They cover cla
 ```text
 app/page.tsx          Resident and maintenance UI
 app/campus-map.tsx    Interactive map and location picker
+app/admin-dashboard.tsx Admin accounts and team workload
+backend/staff.py     Team passwords, account management, role checks
+backend/photos.py    Private photo uploads and visual analysis
+backend/create_admin.py Local initial-admin provisioning
 app/globals.css       Responsive visual system
 shared/campus.json    Sourced landmarks and demo area
 backend/geo.py       Distance and location helpers

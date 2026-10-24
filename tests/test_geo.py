@@ -7,6 +7,7 @@ from backend.geo import LANDMARKS,distance_m
 
 @pytest.fixture
 def client(tmp_path,monkeypatch):
+    monkeypatch.setenv('COOKIE_SECURE','false')
     monkeypatch.setenv('DATABASE_PATH',str(tmp_path/'geo.db'))
     monkeypatch.setenv('DEMO_MODE','true')
     monkeypatch.setenv('AUTH_REQUIRED','false')

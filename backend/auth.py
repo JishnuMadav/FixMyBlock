@@ -40,11 +40,20 @@ def identity(request):
         return None
     with db.connect() as c:
         row = c.execute('SELECT user_id,email FROM auth_sessions WHERE token_hash=? AND expires>?',(digest(token),time.time())).fetchone()
-    return dict(row) if row else None
+    if not row:return None
+    user=dict(row)
+    if user['user_id'].startswith('staff:'):
+        with db.connect() as c:
+            account=c.execute('SELECT username,name,role,team,must_change FROM staff_accounts WHERE id=? AND active=1',(user['user_id'][6:],)).fetchone()
+        if not account:return None
+        user.update(dict(account))
+    else:
+        user.update({'role':'admin' if is_operator(user) else 'student','team':None,'name':user['email'],'must_change':False})
+    return user
 
 def is_operator(user):
     allowed = {x.strip().lower() for x in os.getenv('WORKOS_OPERATOR_EMAILS','').split(',') if x.strip()}
-    return bool(user and user['email'] in allowed)
+    return bool(user and (user.get('role') in ('admin','team') or user['email'] in allowed))
 
 def limit(bucket, maximum, seconds):
     now = time.time()
@@ -105,13 +114,17 @@ def verify(body: Code, request: Request, response: Response):
     user = result.get('user',{})
     if not user.get('id') or user.get('email','').lower()!=email or user.get('email_verified') is not True:
         raise HTTPException(403,'A verified NITK email address is required.')
-    token = secrets.token_urlsafe(32)
+    create_session(request,response,user['id'],email)
+    return {'ok':True}
+
+def create_session(request,response,user_id,email):
+    token=secrets.token_urlsafe(32)
     with db.connect() as c:
         c.execute('DELETE FROM auth_sessions WHERE expires<=? OR token_hash=?',(time.time(),digest(request.cookies.get(COOKIE,''))))
-        c.execute('INSERT INTO auth_sessions VALUES(?,?,?,?)',(digest(token),user['id'],email,time.time()+8*3600))
+        c.execute('INSERT INTO auth_sessions VALUES(?,?,?,?)',(digest(token),user_id,email,time.time()+8*3600))
     response.set_cookie(COOKIE,token,httponly=True,samesite='strict',secure=os.getenv('COOKIE_SECURE','false').lower()=='true',max_age=8*3600)
     response.delete_cookie('fmb_operator')
-    return {'ok':True}
+
 
 @router.post('/logout')
 def logout(request: Request,response: Response):

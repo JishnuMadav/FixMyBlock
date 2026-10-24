@@ -7,6 +7,7 @@ from backend import auth, db
 
 @pytest.fixture
 def client(tmp_path,monkeypatch):
+    monkeypatch.setenv('COOKIE_SECURE','false')
     monkeypatch.setenv('DATABASE_PATH',str(tmp_path/'auth.db'))
     monkeypatch.setenv('AUTH_REQUIRED','true')
     monkeypatch.setenv('WORKOS_API_KEY','test-secret')

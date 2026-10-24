@@ -80,6 +80,10 @@ def ticket(db, ticket_id, owner=""):
     offset = int(db.execute("SELECT value FROM settings WHERE key='hours'").fetchone()[0])
     data["overdue"] = data["status"] in ("Assigned", "In progress") and datetime.fromisoformat(data["due_at"]) < datetime.now(timezone.utc)+timedelta(hours=offset)
     data["events"] = [dict(e) for e in db.execute("SELECT * FROM events WHERE ticket_id=? ORDER BY id", (ticket_id,))]
+    data['photos']=[]
+    if owner and db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='photos'").fetchone():
+        for p in db.execute('SELECT id,analysis FROM photos WHERE ticket_id=? AND (owner=? OR ?)',(ticket_id,owner,int(owner.startswith('staff:')))):
+            data['photos'].append({'id':p['id'],'url':'/api/photos/'+p['id'],'analysis':json.loads(p['analysis'])})
     return data
 
 
