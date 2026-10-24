@@ -1,0 +1,107 @@
+{
+  "name": "NITK Surathkal",
+  "center": [
+    13.0108,
+    74.7948
+  ],
+  "bounds": [
+    [
+      13.003,
+      74.785
+    ],
+    [
+      13.017,
+      74.802
+    ]
+  ],
+  "radius_m": 120,
+  "source": "OpenStreetMap contributors",
+  "retrieved": "2026-10-24",
+  "note": "Approximate mapped landmarks; the demo area is not an official campus boundary.",
+  "landmarks": [
+    {
+      "id": "node-12192516119",
+      "name": "Main Gate",
+      "lat": 13.010979,
+      "lng": 74.7931713,
+      "source": "https://www.openstreetmap.org/node/12192516119"
+    },
+    {
+      "id": "way-361006764",
+      "name": "NITK Main Building",
+      "lat": 13.0107555,
+      "lng": 74.7943638,
+      "source": "https://www.openstreetmap.org/way/361006764"
+    },
+    {
+      "id": "way-1362820346",
+      "name": "NITK Central Library",
+      "lat": 13.0099558,
+      "lng": 74.7942302,
+      "source": "https://www.openstreetmap.org/way/1362820346"
+    },
+    {
+      "id": "way-1146978917",
+      "name": "E-Library",
+      "lat": 13.0100374,
+      "lng": 74.7948369,
+      "source": "https://www.openstreetmap.org/way/1146978917"
+    },
+    {
+      "id": "way-361006812",
+      "name": "Mega Mess (Chaitanya)",
+      "lat": 13.0074968,
+      "lng": 74.795291,
+      "source": "https://www.openstreetmap.org/way/361006812"
+    },
+    {
+      "id": "way-552971044",
+      "name": "Student Activity Center",
+      "lat": 13.0105225,
+      "lng": 74.7958826,
+      "source": "https://www.openstreetmap.org/way/552971044"
+    },
+    {
+      "id": "way-361006858",
+      "name": "Health Care Centre",
+      "lat": 13.0094851,
+      "lng": 74.7961877,
+      "source": "https://www.openstreetmap.org/way/361006858"
+    },
+    {
+      "id": "way-361006869",
+      "name": "Mega Hostel — Tower 1 (Everest)",
+      "lat": 13.0077438,
+      "lng": 74.7948084,
+      "source": "https://www.openstreetmap.org/way/361006869"
+    },
+    {
+      "id": "way-361006777",
+      "name": "3rd Block (Vindhya)",
+      "lat": 13.0064637,
+      "lng": 74.7964721,
+      "source": "https://www.openstreetmap.org/way/361006777"
+    },
+    {
+      "id": "way-545225414",
+      "name": "Main Ground 1",
+      "lat": 13.0099057,
+      "lng": 74.7973567,
+      "source": "https://www.openstreetmap.org/way/545225414"
+    },
+    {
+      "id": "way-361006865",
+      "name": "Lecture Hall Complex B",
+      "lat": 13.0093772,
+      "lng": 74.7944552,
+      "source": "https://www.openstreetmap.org/way/361006865"
+    },
+    {
+      "id": "way-361006786",
+      "name": "Silver Jubilee Auditorium",
+      "lat": 13.0085521,
+      "lng": 74.7957141,
+      "source": "https://www.openstreetmap.org/way/361006786"
+    }
+  ]
+}
