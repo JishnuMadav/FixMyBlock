@@ -1,116 +1,102 @@
 # FixMyBlock
 
-An AI-assisted campus maintenance app built for a hackathon demo at NITK Surathkal. Students describe a problem, review a clear report, and track it through repair.
+### From an informal complaint to a verified repair.
 
-**Independent student project — not an official NITK service.** Starter tickets are fictional.
+FixMyBlock is an AI-assisted campus maintenance prototype. Students describe problems in their own words, maintenance teams receive clear reports, and students confirm whether the repair worked.
 
-## What it does
+**Built around NITK Surathkal for demonstration. This is an independent student project, not an official NITK service. All starter incidents are fictional.**
 
-- Understands informal complaints, asks for missing details, and prepares a report.
-- Supports optional photos with Gemini analysis.
-- Checks existing tickets and asks before linking a possible duplicate.
-- Lets students correct details or cancel before submitting.
-- Includes a campus map, report pins, and Google Maps links.
-- Provides separate student, maintenance-team, and admin dashboards.
-- Lets maintenance teams update progress and students confirm repairs.
+## The problem
 
-## Where AI helps
+A useful maintenance report needs more than a message saying “there is water outside my hostel.” Staff need to know what is wrong, where it is, and whether someone has already reported the same fault. Students also need a way to see progress and confirm the outcome.
 
-Gemini interprets complaint text and photos and compares the meaning of possible duplicate reports. The database filters candidates by location and category. LangGraph coordinates interpretation, clarification, duplicate checking, and saving.
+FixMyBlock connects these steps in one workflow.
 
-Backend rules validate actions and permissions. **AI does not submit reports without user confirmation.** This project uses prompting and workflow controls, not a fine-tuned model. Without a Gemini key, it runs a limited, labelled keyword-based demo.
+## The solution
 
-## Tech stack
-
-| Part | Technology |
+| User | What they can do |
 | --- | --- |
-| Frontend | Next.js, React, TypeScript |
-| Backend | Python, FastAPI |
-| AI workflow | Gemini API, LangGraph |
-| Storage | SQLite |
-| Authentication | WorkOS email codes; local admin-managed team accounts |
-| Maps | Leaflet, OpenStreetMap, Google Maps links |
+| Student | Describe a problem, add an optional photo or map pin, review the report, track progress, and confirm or reopen a repair. |
+| Maintenance team | See its assigned work, record updates, and request repair verification. |
+| Administrator | Monitor team workloads and create, reset, or disable maintenance accounts. |
 
-## Run locally
+Reports cover **lighting, waste, roads, and drainage**, including leaking taps and pipes. Each category maps to the corresponding maintenance team.
 
-Requirements: **Node.js 20.9+** and **Python 3.12**. Commands below use Windows PowerShell.
+## Why AI belongs here
 
-```powershell
-git clone https://github.com/JishnuMadav/FixMyBlock.git
-cd FixMyBlock
-npm ci
-python -m venv .venv
-.venv/Scripts/python -m pip install -r requirements.lock.txt
-Copy-Item .env.example .env
-```
+The database stores and retrieves tickets. AI helps interpret the unstructured evidence that arrives before a useful ticket exists.
 
-Edit `.env`:
-
-| Variable | Value |
+| Task | Approach |
 | --- | --- |
-| `GEMINI_API_KEY` | Your Gemini API key; leave blank for basic demo rules |
-| `GEMINI_MODEL` | Exact model ID available to your account; required when using Gemini |
-| `AUTH_REQUIRED` | `true` for student and staff sign-in |
-| `WORKOS_API_KEY` | Your WorkOS API key |
-| `WORKOS_CLIENT_ID` | Your WorkOS Client ID |
-| `COOKIE_SECURE` | `false` for local HTTP; `true` for public HTTPS |
-| `PUBLIC_ORIGIN` | Leave blank locally; set the exact HTTPS origin when hosting |
+| Understand informal wording, misspellings, and mixed-language complaints | Gemini extracts the issue and relevant details. |
+| Clarify an ambiguous problem | Gemini asks for missing information; backend guards also handle selected ambiguous cases. |
+| Interpret an optional photo | Gemini describes visible evidence and uncertainty. |
+| Find possible duplicate tickets | Database queries filter by category and location; Gemini compares whether candidates describe the same physical issue. |
+| Save tickets, enforce access, and change status | Validated backend operations and database records. |
 
-Enable Magic Auth and email delivery in your WorkOS project. Student login accepts exact `@nitk.edu.in` addresses and verifies a six-digit email code. It verifies email ownership, not enrollment status.
+For example, a broken rear-gate lamp and a broken bathroom lamp can share the same hostel and category while requiring different repairs. Matching those fields alone is not enough to establish a duplicate.
 
-For a **local-only demo without WorkOS**, set `AUTH_REQUIRED=false` and keep `PUBLIC_ORIGIN` empty. Do not expose that mode publicly.
+**Students confirm both new submissions and proposed duplicate links.** AI cannot independently mark repairs complete or grant staff access.
 
-Start the backend:
+## The agentic workflow
 
-```powershell
-.venv/Scripts/python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000
+LangGraph coordinates a bounded workflow around Gemini interpretation and database operations. Conversation state is saved between requests.
+
+```mermaid
+flowchart LR
+    A[Student message and optional photo] --> B[Interpret intent and details]
+    B --> C{Enough information?}
+    C -->|No| D[Ask a clarification]
+    D --> A
+    C -->|Yes| E[Query candidate tickets]
+    E --> F[Compare possible duplicates]
+    F --> G[Student reviews and confirms]
+    G --> H[Save or link report]
+    H --> I[Assigned team updates work]
+    I --> J[Student verifies or reopens]
 ```
 
-In another terminal, start the frontend:
+Unrelated requests do not proceed to submission. Corrections update the draft, and conflicting named landmarks and map pins require review. Changing photo or pin evidence also requires another review before submission.
 
-```powershell
-npm run dev
-```
+The project uses **task-specific prompting, structured outputs, and workflow validation**. It does not use a fine-tuned or retrained Gemini model.
 
-Open [localhost:3000](http://localhost:3000). Keep both terminals running. Restart the backend after changing `.env`.
+## What judges can evaluate
 
-## Create the administrator
+1. **Student experience:** an unclear observation becomes a reviewed report through clarification and correction.
+2. **AI contribution:** informal and mixed-language input is interpreted, and candidate duplicates are compared by meaning.
+3. **Operational workflow:** the report appears in the assigned team's queue and progresses through repair verification.
+4. **Human control:** the student confirms submission and the outcome; administrators manage staff access.
 
-With authentication enabled, run:
+The complete lifecycle is **Assigned → In progress → Awaiting verification → Resolved**. A student can reopen an unresolved repair.
 
-```powershell
-.venv/Scripts/python -m backend.create_admin
-```
+## Implementation
 
-The initial user ID is `fmb-admin`. Its generated temporary password is saved privately in `data/admin-credentials.txt`. Choose **Maintenance / Admin** on the sign-in screen and change the password at first login. Remove the credential file after changing it.
+| Layer | Technology |
+| --- | --- |
+| Interface | Next.js, React, TypeScript |
+| API and validation | Python, FastAPI |
+| AI interpretation | Gemini API |
+| Workflow orchestration | LangGraph |
+| Persistence | SQLite |
+| Student authentication | WorkOS six-digit email codes for `@nitk.edu.in` addresses |
+| Staff authentication | Admin-created accounts with team-scoped permissions |
+| Campus map | Leaflet and OpenStreetMap, with Google Maps links |
 
-The admin can create, reset, and disable maintenance-team accounts. Teams can access only their assigned work. The four teams are Electrical, Sanitation, Grounds, and Plumbing.
+## Validation
 
+The latest verification completed **69 automated tests** and a successful production build. Tests cover permissions, report lifecycle, duplicate confirmation, corrections, cancellation, evidence changes, map conflicts, and provider failures.
 
-## Tests
+Additional live Gemini checks exercised ambiguous wording, partial cancellation, location corrections, mixed Hindi-English input, and same-asset versus different-asset comparisons. A map-conflict failure discovered during testing was fixed with a backend distance check and retested through pin correction.
 
-```powershell
-.venv/Scripts/python -m pytest -q
-npm run build
-```
+Automated tests use isolated databases and mock external services. **The test count is a software-reliability result, not an AI accuracy score.** No measured improvement in campus repair times is claimed.
 
-The automated suite uses isolated databases and mocks external services. It tests access control, report lifecycle, duplicate confirmation, corrections, cancellation, photo/pin review, and AI error handling. These are software tests, not a model-accuracy benchmark. Live Gemini checks require a configured account and available quota.
+See [the test suite](tests/) and [local setup instructions](docs/SETUP.md) to inspect or reproduce the implementation.
 
+## Prototype boundaries
 
-## Privacy and limits
-
-- Complaint text, candidate ticket details, and optional photos are sent to Gemini when configured. Avoid personal information and faces.
-- Gemini needs internet access and has usage limits. Failed AI requests do not silently fall back to rules or submit a ticket.
-- Campus landmarks are approximate. OpenStreetMap tiles require internet; Google Maps opens through links, without a Google Maps API key.
-- This app is not an emergency service and does not dispatch real maintenance crews. Follow-up suggestions are recorded locally, not sent as email or SMS.
-- SQLite data stays on the host machine. This is a hackathon prototype, not a managed production deployment.
-
-## Project structure
-
-```text
-app/          Frontend, maps, sign-in, and dashboards
-backend/      API, AI workflow, authentication, and database
-shared/       Campus landmarks and demo map bounds
-tests/        Automated regression tests
-data/         Local runtime data — excluded from Git
-```
+- No official NITK, municipal, or real maintenance-dispatch integration is connected.
+- Gemini requires network access and available quota; configured-provider failures are shown explicitly rather than silently replaced with rule-based answers.
+- A separately labelled, limited keyword demo is available without a Gemini key.
+- Complaint text, relevant candidate records, and optional photos are sent to Gemini when configured. Uploaded photos should exclude faces and personal information.
+- Campus landmarks are approximate. Email verification establishes inbox ownership, not enrollment status.
+- The prototype runs on a single host with SQLite. It is not an emergency service or a managed production deployment.
