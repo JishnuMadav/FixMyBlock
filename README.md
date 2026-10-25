@@ -60,14 +60,6 @@ Unrelated requests do not proceed to submission. Corrections update the draft, a
 
 The project uses **task-specific prompting, structured outputs, and workflow validation**. It does not use a fine-tuned or retrained Gemini model.
 
-## What judges can evaluate
-
-1. **Student experience:** an unclear observation becomes a reviewed report through clarification and correction.
-2. **AI contribution:** informal and mixed-language input is interpreted, and candidate duplicates are compared by meaning.
-3. **Operational workflow:** the report appears in the assigned team's queue and progresses through repair verification.
-4. **Human control:** the student confirms submission and the outcome; administrators manage staff access.
-
-The complete lifecycle is **Assigned → In progress → Awaiting verification → Resolved**. A student can reopen an unresolved repair.
 
 ## Implementation
 
