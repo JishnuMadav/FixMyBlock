@@ -78,7 +78,7 @@ The project uses **task-specific prompting, structured outputs, and workflow val
 
 The latest verification completed **69 automated tests** and a successful production build. Tests cover permissions, report lifecycle, duplicate confirmation, corrections, cancellation, evidence changes, map conflicts, and provider failures.
 
-Additional live Gemini checks exercised ambiguous wording, partial cancellation, location corrections, mixed Hindi-English input, and same-asset versus different-asset comparisons. A map-conflict failure discovered during testing was fixed with a backend distance check and retested through pin correction.
+Additional live Gemini checks exercised ambiguous wording, partial cancellation, location corrections, and same-asset versus different-asset comparisons. A map-conflict failure discovered during testing was fixed with a backend distance check and retested through pin correction.
 
 Automated tests use isolated databases and mock external services. **The test count is a software-reliability result, not an AI accuracy score.** No measured improvement in campus repair times is claimed.
 
