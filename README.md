@@ -86,15 +86,6 @@ The initial user ID is `fmb-admin`. Its generated temporary password is saved pr
 
 The admin can create, reset, and disable maintenance-team accounts. Teams can access only their assigned work. The four teams are Electrical, Sanitation, Grounds, and Plumbing.
 
-## Quick demo
-
-1. Report: **“There is water all over the floor outside Hostel 1.”**
-2. Answer the clarification: **“It is coming from a broken pipe.”**
-3. Review the description and location, then submit.
-4. Sign in as the plumbing team and mark the report **In progress**.
-5. After repair, request verification; the reporting student can confirm or reopen it.
-
-To demonstrate duplicate reasoning, compare **“The lamp at the rear gate of Hostel 3 is still out”** with **“The third-floor bathroom lamp inside Hostel 3 is broken, not the rear gate light.”** Keep the fictional rear-gate ticket open for this demo. AI outputs can vary; rehearse before presenting.
 
 ## Tests
 
@@ -105,20 +96,9 @@ npm run build
 
 The automated suite uses isolated databases and mocks external services. It tests access control, report lifecycle, duplicate confirmation, corrections, cancellation, photo/pin review, and AI error handling. These are software tests, not a model-accuracy benchmark. Live Gemini checks require a configured account and available quota.
 
-## Sharing a laptop demo
-
-```powershell
-npm run build
-npm run start -- --port 3100
-```
-
-Keep FastAPI running on port 8000. Forward an HTTPS tunnel to `http://127.0.0.1:3100`, set `PUBLIC_ORIGIN` to its exact origin, set `COOKIE_SECURE=true`, and restart FastAPI. Public hosting requires `AUTH_REQUIRED=true` and configured WorkOS credentials.
-
-Keep the laptop awake and online. Temporary tunnel URLs can expire or change; update `PUBLIC_ORIGIN` when they do. No temporary demo URL is hard-coded in this repository.
 
 ## Privacy and limits
 
-- Never commit `.env`, API keys, passwords, databases, or uploaded photos. `.env.example` contains only blank placeholders and local defaults.
 - Complaint text, candidate ticket details, and optional photos are sent to Gemini when configured. Avoid personal information and faces.
 - Gemini needs internet access and has usage limits. Failed AI requests do not silently fall back to rules or submit a ticket.
 - Campus landmarks are approximate. OpenStreetMap tiles require internet; Google Maps opens through links, without a Google Maps API key.
