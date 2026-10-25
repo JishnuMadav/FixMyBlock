@@ -1,158 +1,136 @@
 # FixMyBlock
 
-A local campus-maintenance prototype with a Next.js interface, FastAPI + SQLite backend, and a LangGraph workflow. Gemini is optional; the application visibly labels its deterministic demo mode when no key is configured.
+An AI-assisted campus maintenance app built for a hackathon demo at NITK Surathkal. Students describe a problem, review a clear report, and track it through repair.
 
-## Run on Windows
+**Independent student project — not an official NITK service.** Starter tickets are fictional.
 
-Requirements: Node.js 20.9+ and Python 3.11+.
+## What it does
+
+- Understands informal complaints, asks for missing details, and prepares a report.
+- Supports optional photos with Gemini analysis.
+- Checks existing tickets and asks before linking a possible duplicate.
+- Lets students correct details or cancel before submitting.
+- Includes a campus map, report pins, and Google Maps links.
+- Provides separate student, maintenance-team, and admin dashboards.
+- Lets maintenance teams update progress and students confirm repairs.
+
+## Where AI helps
+
+Gemini interprets complaint text and photos and compares the meaning of possible duplicate reports. The database filters candidates by location and category. LangGraph coordinates interpretation, clarification, duplicate checking, and saving.
+
+Backend rules validate actions and permissions. **AI does not submit reports without user confirmation.** This project uses prompting and workflow controls, not a fine-tuned model. Without a Gemini key, it runs a limited, labelled keyword-based demo.
+
+## Tech stack
+
+| Part | Technology |
+| --- | --- |
+| Frontend | Next.js, React, TypeScript |
+| Backend | Python, FastAPI |
+| AI workflow | Gemini API, LangGraph |
+| Storage | SQLite |
+| Authentication | WorkOS email codes; local admin-managed team accounts |
+| Maps | Leaflet, OpenStreetMap, Google Maps links |
+
+## Run locally
+
+Requirements: **Node.js 20.9+** and **Python 3.12**. Commands below use Windows PowerShell.
 
 ```powershell
 git clone https://github.com/JishnuMadav/FixMyBlock.git
 cd FixMyBlock
+npm ci
 python -m venv .venv
 .venv/Scripts/python -m pip install -r requirements.lock.txt
-npm ci
 Copy-Item .env.example .env
 ```
 
-Open two terminals in this directory:
+Edit `.env`:
+
+| Variable | Value |
+| --- | --- |
+| `GEMINI_API_KEY` | Your Gemini API key; leave blank for basic demo rules |
+| `GEMINI_MODEL` | Exact model ID available to your account; required when using Gemini |
+| `AUTH_REQUIRED` | `true` for student and staff sign-in |
+| `WORKOS_API_KEY` | Your WorkOS API key |
+| `WORKOS_CLIENT_ID` | Your WorkOS Client ID |
+| `COOKIE_SECURE` | `false` for local HTTP; `true` for public HTTPS |
+| `PUBLIC_ORIGIN` | Leave blank locally; set the exact HTTPS origin when hosting |
+
+Enable Magic Auth and email delivery in your WorkOS project. Student login accepts exact `@nitk.edu.in` addresses and verifies a six-digit email code. It verifies email ownership, not enrollment status.
+
+For a **local-only demo without WorkOS**, set `AUTH_REQUIRED=false` and keep `PUBLIC_ORIGIN` empty. Do not expose that mode publicly.
+
+Start the backend:
 
 ```powershell
-# Terminal 1
 .venv/Scripts/python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000
 ```
 
+In another terminal, start the frontend:
+
 ```powershell
-# Terminal 2
 npm run dev
 ```
 
-Visit http://localhost:3000. Keep both terminals running. Ctrl+C stops each server. Next.js proxies /api requests to FastAPI on port 8000.
+Open [localhost:3000](http://localhost:3000). Keep both terminals running. Restart the backend after changing `.env`.
 
-## Enable Gemini
+## Create the administrator
 
-Copy `.env.example` to `.env` and set `GEMINI_API_KEY` in that file (never in browser code or chat). Set `GEMINI_MODEL` to a tool/structured-output-capable model available to your account; the default is `gemini-3.8-flash`. Restart the Python server. The interface shows whether the server is configured for Gemini or demo rules; a configured key does not guarantee API access. Model failures return an explicit error, roll back ticket mutations, and can be retried. No live model call was needed to run the demo.
-
-Gemini receives complaint text, relevant candidate tickets, and submitted maintenance notes. Avoid private information in this prototype. Logs do not print the API key. `.env` and the SQLite database are ignored by Git.
-
-## Student sign-in with WorkOS
-
-Student sign-in is enabled by default. In the [WorkOS dashboard](https://dashboard.workos.com), choose your environment, enable **Magic Auth** in Authentication, and leave WorkOS email delivery enabled. Copy its API key and Client ID into the existing `.env` placeholders:
-
-```dotenv
-AUTH_REQUIRED=true
-WORKOS_API_KEY=your_workos_api_key
-WORKOS_CLIENT_ID=your_workos_client_id
-WORKOS_OPERATOR_EMAILS=
-COOKIE_SECURE=false
-```
-
-Restart FastAPI after configuring them. Never put the API key in `NEXT_PUBLIC_` variables or commit `.env`. The custom email/code UI calls the WorkOS Magic Auth API through FastAPI; no OAuth callback is needed for this flow. Missing credentials leave login locked with a setup message rather than admitting anonymous users.
-
-Only exact `@nitk.edu.in` addresses are accepted on the server. WorkOS sends and verifies a six-digit code, valid for 10 minutes. Sending is limited to once per address per minute; verification attempts are limited by address and IP. WorkOS responses containing codes and tokens never reach the browser or application logs. Real inbox delivery must be tested after credentials are configured.
-
-Verified users receive an opaque HttpOnly, SameSite cookie with an eight-hour absolute lifetime. Only its hash is stored; sign-out revokes the local session. Sign in again when it expires. Reports use the stable WorkOS user ID, so they persist across logins and devices. Older anonymous demo reports stay in the database without being assigned to an unverified account. This verifies email ownership, not enrollment status.
-
-Maintenance teams sign in with admin-created user IDs and passwords, separately from student email codes. Legacy emails explicitly listed in `WORKOS_OPERATOR_EMAILS` retain administrator privileges; leave that list empty unless needed. Students cannot enable operator access using the old demo cookie. Set `COOKIE_SECURE=true` behind HTTPS before deployment. The current server still accepts only localhost hosts/origins. These local sessions expire independently of WorkOS dashboard session revocation; centralized revocation/webhooks are not implemented.
-
-For isolated offline demonstrations only, `AUTH_REQUIRED=false` restores the old anonymous session mode. Keep that mode on localhost.
-
-## Admin and maintenance dashboards
-
-Create the initial administrator locally (there is no public admin registration endpoint):
+With authentication enabled, run:
 
 ```powershell
 .venv/Scripts/python -m backend.create_admin
 ```
 
-This creates `fmb-admin` only if no administrator exists and saves its random temporary password to `data/admin-credentials.txt`, which is ignored by Git. Open **Maintenance / Admin** on the sign-in page. Change the temporary password at first sign-in, then remove the local credential file. Running the command again does not reset an existing administrator.
+The initial user ID is `fmb-admin`. Its generated temporary password is saved privately in `data/admin-credentials.txt`. Choose **Maintenance / Admin** on the sign-in screen and change the password at first login. Remove the credential file after changing it.
 
-The admin dashboard shows workload by team and lets an administrator create team user IDs, generate one-time-displayed temporary passwords, reset passwords, and enable/disable accounts. Account actions are audited. Teams must change temporary passwords before accessing reports; passwords are stored as salted scrypt hashes. Reset/disable revokes existing sessions. Each team dashboard and ticket mutation is restricted on the server to that team's assigned work. Admins can view all work queues. The four teams are Electrical, Sanitation, Grounds, and Plumbing.
+The admin can create, reset, and disable maintenance-team accounts. Teams can access only their assigned work. The four teams are Electrical, Sanitation, Grounds, and Plumbing.
 
-## Complaint validation and photos
+## Quick demo
 
-The assistant checks whether the message describes an existing maintenance problem before asking for a location or offering submission. Unrelated messages and gibberish receive a redirect without a ticket action. A location or category word alone should not turn an unrelated task into a complaint. Gemini uses an explicit intent field; offline demo rules are narrower. Model classification still needs evaluation against real-world phrasing and is not a guarantee of perfect filtering.
+1. Report: **“There is water all over the floor outside Hostel 1.”**
+2. Answer the clarification: **“It is coming from a broken pipe.”**
+3. Review the description and location, then submit.
+4. Sign in as the plumbing team and mark the report **In progress**.
+5. After repair, request verification; the reporting student can confirm or reopen it.
 
-Photos are optional. JPEG, PNG, and WebP uploads are limited to 5 MB and 20 megapixels, decoded and re-encoded as JPEG, resized to 1600 pixels, and stripped of metadata. The UI explains that photos are sent to Gemini and shows its observation and uncertainty for review. No Gemini key means an attachment with an explicit unavailable-analysis label. Analysis failures let the resident retry or proceed without a photo. Photo observations cannot directly submit tickets or establish exact locations.
+To demonstrate duplicate reasoning, compare **“The lamp at the rear gate of Hostel 3 is still out”** with **“The third-floor bathroom lamp inside Hostel 3 is broken, not the rear gate light.”** Keep the fictional rear-gate ticket open for this demo. AI outputs can vary; rehearse before presenting.
 
-Photos are stored privately in the ignored SQLite database. Only the uploader and an authorized administrator/assigned team can fetch them. Unattached images older than 24 hours are cleaned up when the next upload succeeds. Submitted photos follow the local database retention policy; automated removal of submitted evidence is not implemented. Do not upload faces or private information.
+## Tests
 
-## What works
+```powershell
+.venv/Scripts/python -m pytest -q
+npm run build
+```
 
-- Report intake with an intent check before category/location clarification.
-- Optional photo evidence with Gemini analysis and resident review.
-- Admin-managed maintenance accounts and dashboards restricted by team.
-- Interactive NITK campus map, 12 searchable landmarks, draggable report pins, and optional location details.
-- Saved coordinates and nearby duplicate candidates within 120 metres; Gemini compares the complaint with those candidates before suggesting a link.
-- Google Maps links for selected locations (no Google Maps API key required).
-- Explicit review before ticket creation; confirmation before duplicate linking.
-- Gemini structured interpretation and candidate comparison when configured.
-- LangGraph conditional workflow; conversation state persisted between turns in SQLite.
-- Idempotent chat requests; repeated submit requests do not create extra tickets.
-- Real database tickets, resident subscriptions, activity history, and personal reports.
-- Operator work queue, validated status transitions, and required work notes.
-- Resident-only resolution confirmation and reopening.
-- A 60-second background deadline monitor while FastAPI runs.
-- Manual demo-clock advancement; context-aware follow-up suggestions and operator approval.
-- Responsive interface with keyboard-accessible native dialogs and error recovery.
+The automated suite uses isolated databases and mocks external services. It tests access control, report lifecycle, duplicate confirmation, corrections, cancellation, photo/pin review, and AI error handling. These are software tests, not a model-accuracy benchmark. Live Gemini checks require a configured account and available quota.
 
-## Demo walkthrough
-
-1. Choose a location on the map, such as E-Library, and add a detail such as “Near the entrance — fictional demo.” Describe a broken streetlight, review, and submit.
-2. Start a new report for the same broken streetlight at the same pin. Review the possible duplicate and confirm the link. Only one repair ticket is needed.
-3. Sign in as an administrator or the assigned maintenance team, open the ticket in its work queue, add a note, and start work.
-4. Add “The crew could not find the location” and select Suggest next step. Review and approve the location follow-up. It is recorded in the local queue; no message is sent externally.
-5. Add a completion note and request repair verification. Open My reports and confirm the fix or reopen it.
-6. Advance demo time by 24 hours to flag overdue work. The offset is for deadline demonstrations only; activity timestamps remain real time.
-
-## Important limits
-
-This is an independent single-machine demonstration, not an official NITK reporting service. All ten starter tickets are fictional: six original examples and four mapped campus examples. Existing records are preserved without inventing coordinates. No municipal system, real maintenance crew, email, or SMS integration is connected. Approved follow-ups become queue items; they do not contact anyone. Team reassignment is not implemented in this first version.
-
-The map uses Leaflet and OpenStreetMap tiles, which require an internet connection. Google Maps opens through location links, not an embedded Google Maps SDK. Approximate landmark coordinates and source links are in `shared/campus.json`, retrieved on 24 October 2026. The rectangular selection area is a demo constraint, not an official campus boundary. Sample incident pins do not assert real faults at these places. Map attribution remains visible.
-
-With student sign-in enabled, all report API access requires a verified session and maintenance mutations require an approved operator. The optional anonymous offline mode uses an insecure demo operator switch and must stay local. Deployment additionally needs HTTPS, configured hosts/origins, data retention policies, and operational monitoring. Campus reports are visible to all signed-in users; email addresses are not added to report payloads.
-
-Demo rules only support English keywords and the supplied locations. Gemini mode is designed to improve ambiguous input and contextual comparisons, but requires evaluation with a live key. A saved chat can resume through its conversation ID at the API; the current UI starts a new conversation on page reload. Tickets remain saved.
-
-## Public demo hosting
-
-Use a production build for a shared demo:
+## Sharing a laptop demo
 
 ```powershell
 npm run build
 npm run start -- --port 3100
 ```
 
-Run FastAPI separately as described above. A Cloudflare Tunnel can forward an HTTPS address to `http://127.0.0.1:3100`. Set `PUBLIC_ORIGIN` in `.env` to the exact HTTPS origin (no path), set `COOKIE_SECURE=true`, and restart FastAPI. Keep `AUTH_REQUIRED=true` and configure WorkOS first. The backend rejects public hosting without configured authentication. Only the configured origin is added to the local origin allowlist. A temporary tunnel URL changes when a new tunnel is created; update `PUBLIC_ORIGIN` and restart the backend each time.
+Keep FastAPI running on port 8000. Forward an HTTPS tunnel to `http://127.0.0.1:3100`, set `PUBLIC_ORIGIN` to its exact origin, set `COOKIE_SECURE=true`, and restart FastAPI. Public hosting requires `AUTH_REQUIRED=true` and configured WorkOS credentials.
 
-Keep the laptop awake and online. This is a prototype, not a managed production deployment. Never publish `.env`, database files, logs, or dependency/build folders. The repository includes only a blank environment template; configure your own credentials after cloning.
+Keep the laptop awake and online. Temporary tunnel URLs can expire or change; update `PUBLIC_ORIGIN` when they do. No temporary demo URL is hard-coded in this repository.
 
-## Verification
+## Privacy and limits
 
-```powershell
-.venv/Scripts/python -m pytest -q
-npm run build
-npm run typecheck
-```
+- Never commit `.env`, API keys, passwords, databases, or uploaded photos. `.env.example` contains only blank placeholders and local defaults.
+- Complaint text, candidate ticket details, and optional photos are sent to Gemini when configured. Avoid personal information and faces.
+- Gemini needs internet access and has usage limits. Failed AI requests do not silently fall back to rules or submit a ticket.
+- Campus landmarks are approximate. OpenStreetMap tiles require internet; Google Maps opens through links, without a Google Maps API key.
+- This app is not an emergency service and does not dispatch real maintenance crews. Follow-up suggestions are recorded locally, not sent as email or SMS.
+- SQLite data stays on the host machine. This is a hackathon prototype, not a managed production deployment.
 
-Tests use temporary databases; they do not modify your demo data. They cover clarification, confirmation, idempotency, duplicate/separate cases, role and ownership checks, completion/reopening, follow-up approval, foreign-origin rejection, model-failure rollback, coordinate storage, nearby filtering, invalid pins, changed-pin review, and repeatable campus migration.
-
-## Structure
+## Project structure
 
 ```text
-app/page.tsx          Resident and maintenance UI
-app/campus-map.tsx    Interactive map and location picker
-app/admin-dashboard.tsx Admin accounts and team workload
-backend/staff.py     Team passwords, account management, role checks
-backend/photos.py    Private photo uploads and visual analysis
-backend/create_admin.py Local initial-admin provisioning
-app/globals.css       Responsive visual system
-shared/campus.json    Sourced landmarks and demo area
-backend/geo.py       Distance and location helpers
-backend/main.py      API, access gates, follow-up monitor
-backend/agent.py     LangGraph nodes and Gemini adapter
-backend/db.py        SQLite schema, seed records, audit history
-tests/               Isolated integration tests
-data/                Local runtime database (ignored)
+app/          Frontend, maps, sign-in, and dashboards
+backend/      API, AI workflow, authentication, and database
+shared/       Campus landmarks and demo map bounds
+tests/        Automated regression tests
+data/         Local runtime data — excluded from Git
 ```

@@ -2,6 +2,7 @@ import asyncio
 import json
 import os
 import uuid
+import re
 from contextlib import asynccontextmanager
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -12,6 +13,7 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from pydantic import BaseModel, Field, model_validator
 from . import db, auth, staff, photos
 from .geo import CAMPUS, in_demo_area
+from .ai_errors import assistant_error
 
 load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 from .agent import graph, model_json
@@ -177,6 +179,11 @@ def chat(body:Chat,request:Request):
         if phase=="done": raise HTTPException(409,"This report is already saved. Start a new report.")
         if body.action and not ((body.action=="submit" and phase=="review") or (body.action in ("link","separate") and phase=="duplicate")):
             raise HTTPException(409,"This action is no longer available.")
+        if body.action:
+            if 'photo_id' in body.model_fields_set and body.photo_id!=state.get('photo_id'):
+                raise HTTPException(409,'The photo changed. Review the updated report before submitting.')
+            if 'pin' in body.model_fields_set and (body.pin.model_dump() if body.pin else None)!=state.get('pin'):
+                raise HTTPException(409,'The location changed. Review the updated report before submitting.')
         if body.photo_id:
             photo=conn.execute('SELECT * FROM photos WHERE id=? AND owner=?',(body.photo_id,user)).fetchone()
             if not photo or photo['ticket_id'] is not None:raise HTTPException(403,'Photo unavailable for this report.')
@@ -191,6 +198,8 @@ def chat(body:Chat,request:Request):
             if body.action and incoming!=state.get('pin'):
                 raise HTTPException(409,'The location changed. Send the updated location for review first.')
             state['pin']=incoming
+        elif 'pin' in body.model_fields_set and not body.action:
+            state.pop('pin',None)
         if not body.action and phase in ("duplicate","review"):
             # Explicit edits return to interpretation and repeat duplicate checking.
             state.pop("candidate",None)
@@ -201,12 +210,22 @@ def chat(body:Chat,request:Request):
         else:
             try:
                 result=graph.invoke(state)
-            except Exception:
-                # Transaction rolls back. Never silently present fallback output as AI.
-                raise HTTPException(503,"The assistant could not finish this step. No report was saved. Please retry; if using Gemini, check the server API key and model access.")
+            except Exception as exc:
+                # A failed edit must not leave an older draft eligible for submission.
+                conn.rollback()
+                safe={k:v for k,v in state.items() if k not in ('db','owner','action','message')}
+                # Preserve accepted context for a retry such as "actually Hostel 2".
+                # The blocked phase prevents any submit/link action until re-reviewed.
+                safe.update(phase='blocked',candidate=None,choices=[])
+                conn.execute('INSERT INTO conversations VALUES(?,?,?) ON CONFLICT(id) DO UPDATE SET state=excluded.state',
+                    (body.conversation_id,user,json.dumps(safe)))
+                conn.commit()
+                raise assistant_error(exc) from None
+        if re.search(r'\b(sparks?|smoke|live wire|exposed wire)\b',result.get('description',''),re.I):
+            result['answer']='Keep away and do not touch the equipment. Contact campus security or maintenance immediately; this demo does not dispatch emergency help. '+result['answer']
         saved={k:v for k,v in result.items() if k not in ("db","owner","action","message")}
         conn.execute("INSERT INTO conversations VALUES(?,?,?) ON CONFLICT(id) DO UPDATE SET state=excluded.state",(body.conversation_id,user,json.dumps(saved)))
-        payload={"message":result["answer"],"choices":result.get("choices",[]),"trace":result.get("trace",[]),"phase":result["phase"],"mode":result.get("mode","demo"),"draft":{"title":result.get("title"),"category":result.get("category"),"location":result.get("location"),"pin":result.get('pin'),"photo_id":result.get("photo_id"),"photo_analysis":result.get("photo_analysis"),"team":db.TEAMS.get(result.get("category"))},"ticket":db.ticket(conn,result["ticket_id"],user) if result.get("ticket_id") else None}
+        payload={"message":result["answer"],"choices":result.get("choices",[]),"trace":result.get("trace",[]),"phase":result["phase"],"mode":result.get("mode","demo"),"draft":{"title":result.get("title"),"description":result.get('description'),"category":result.get("category"),"location":result.get("location"),"pin":result.get('pin'),"photo_id":result.get("photo_id"),"photo_analysis":result.get("photo_analysis"),"team":db.TEAMS.get(result.get("category"))},"ticket":db.ticket(conn,result["ticket_id"],user) if result.get("ticket_id") else None}
         conn.execute("INSERT INTO requests VALUES(?,?,?)",(body.request_id,user,json.dumps(payload)))
         return payload
 

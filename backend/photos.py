@@ -12,6 +12,7 @@ from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 from . import auth, db, staff
 from .agent import model_json
+from .ai_errors import assistant_error
 
 router=APIRouter(prefix='/api/photos')
 MAX_BYTES=5*1024*1024
@@ -60,7 +61,7 @@ def analyze(raw):
                 'A normal object or an unrelated photo is not an issue. A daylight lamp photo alone cannot show whether it works at night. '
                 'Do not identify people or transcribe private information. State visual uncertainty. Set is_issue=false if evidence is insufficient.',
                 Observation,image=clean)
-        except Exception:raise HTTPException(503,'Photo analysis is unavailable. Retry, or continue without a photo.')
+        except Exception as exc:raise assistant_error(exc) from None
         data={**observation.model_dump(),'mode':'gemini'}
     else:data={'is_issue':False,'category':None,'summary':'Photo attached. Describe the issue in your own words.','uncertainty':'AI photo analysis is unavailable without a Gemini key.','mode':'demo'}
     return clean,data
